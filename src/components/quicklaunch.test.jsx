@@ -344,6 +344,63 @@ describe("components/quicklaunch", () => {
     expect(highlight.closest("span")?.className).toContain("bg-theme-300/10");
   });
 
+  it("also matches services and bookmarks by URL", async () => {
+    renderWithProviders(
+      <Wrapper
+        servicesAndBookmarks={[
+          { name: "Unrelated", href: "https://example.com/abc-service" },
+          { name: "Abc Name", href: "https://example.com/other" },
+        ]}
+      />,
+      { settings: { quicklaunch: { provider: "duckduckgo", showSearchSuggestions: false } } },
+    );
+
+    const input = screen.getByPlaceholderText("Search");
+    await waitFor(() => expect(input).toHaveFocus());
+
+    fireEvent.change(input, { target: { value: "abc" } });
+
+    await waitFor(() => expect(document.querySelector('button[data-index="1"]')).toBeTruthy());
+
+    // name matches are listed above URL-only matches
+    expect(document.querySelector('button[data-index="0"]')?.textContent).toContain("Abc Name");
+    expect(document.querySelector('button[data-index="1"]')?.textContent).toContain("Unrelated");
+  });
+
+  it("shows the matching URL highlighted for URL-only matches", async () => {
+    renderWithProviders(
+      <Wrapper servicesAndBookmarks={[{ name: "Unrelated", href: "https://example.com/abc-service" }]} />,
+      { settings: { quicklaunch: { provider: "duckduckgo", showSearchSuggestions: false } } },
+    );
+
+    const input = screen.getByPlaceholderText("Search");
+    await waitFor(() => expect(input).toHaveFocus());
+
+    fireEvent.change(input, { target: { value: "abc" } });
+
+    // a URL-only match (priority 2) renders its href through highlightText (bg-theme-300/10)
+    const button = document.querySelector('button[data-index="0"]');
+    expect(button?.textContent).toContain("https://example.com/abc-service");
+    const highlight = button?.querySelector('span[class*="bg-theme-300/10"]');
+    expect(highlight?.textContent).toBe("abc");
+  });
+
+  it("skips URL matching when searchUrls is disabled", async () => {
+    renderWithProviders(
+      <Wrapper servicesAndBookmarks={[{ name: "Unrelated", href: "https://example.com/abc-service" }]} />,
+      { settings: { quicklaunch: { provider: "duckduckgo", searchUrls: false, showSearchSuggestions: false } } },
+    );
+
+    const input = screen.getByPlaceholderText("Search");
+    await waitFor(() => expect(input).toHaveFocus());
+
+    fireEvent.change(input, { target: { value: "abc" } });
+
+    // the only result left is the internet-search option
+    await waitFor(() => expect(document.querySelector('button[data-index="1"]')).toBeFalsy());
+    expect(document.querySelector('button[data-index="0"]')?.textContent).toContain("DuckDuckGo");
+  });
+
   it("fetches search suggestions and ArrowRight autocompletes the selected suggestion", async () => {
     const originalFetch = globalThis.fetch;
     const fetchSpy = vi.fn(async () => ({
