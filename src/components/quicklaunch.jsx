@@ -41,8 +41,9 @@ function getSearchResults({
   const results = servicesAndBookmarks.flatMap((result) => {
     const nameMatch = result.name.toLowerCase().includes(searchString);
     const descriptionMatch = searchDescriptions && result.description?.toLowerCase().includes(searchString);
+    const urlMatch = result.href?.toLowerCase().includes(searchString.toLowerCase());
 
-    if (!nameMatch && !descriptionMatch) return [];
+    if (!nameMatch && !descriptionMatch && !urlMatch) return [];
     return [{ ...result, ...(searchDescriptions && { priority: nameMatch ? 2 : +descriptionMatch }) }];
   });
 

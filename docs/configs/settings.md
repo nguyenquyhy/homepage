@@ -502,6 +502,8 @@ You can use the 'Quick Launch' feature to search services, perform a web search 
 
 <img width="1000" alt="quicklaunch" src="https://user-images.githubusercontent.com/4887959/216880811-90ff72cb-2990-4475-889b-7c3a31e6beef.png">
 
+Searches match against service names and URLs (so typing part of a service's address will include it in the results), as well as descriptions when `searchDescriptions` is enabled.
+
 There are a few optional settings for the Quick Launch feature:
 
 - `searchDescriptions`: which lets you control whether item descriptions are included in searches. This is false by default. When enabled, results that match the item name will be placed above those that only match the description.
