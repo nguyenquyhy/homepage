@@ -32,6 +32,7 @@ function getSearchResults({
   searchProvider,
   searchString,
   searchSuggestions,
+  searchUrls,
   servicesAndBookmarks,
   t,
   url,
@@ -40,13 +41,16 @@ function getSearchResults({
 
   const results = servicesAndBookmarks.flatMap((result) => {
     const nameMatch = result.name.toLowerCase().includes(searchString);
-    const descriptionMatch = searchDescriptions && result.description?.toLowerCase().includes(searchString);
+    const descriptionMatch = searchDescriptions && !!result.description?.toLowerCase().includes(searchString);
+    const urlMatch = searchUrls && !!result.href?.toLowerCase().includes(searchString);
 
-    if (!nameMatch && !descriptionMatch) return [];
-    return [{ ...result, ...(searchDescriptions && { priority: nameMatch ? 2 : +descriptionMatch }) }];
+    if (!nameMatch && !descriptionMatch && !urlMatch) return [];
+    if (!searchDescriptions && !searchUrls) return [result];
+    // name matches first, then description matches, then url-only matches
+    return [{ ...result, priority: nameMatch ? 2 : +descriptionMatch }];
   });
 
-  if (searchDescriptions) {
+  if (searchDescriptions || searchUrls) {
     results.sort((a, b) => b.priority - a.priority);
   }
 
@@ -83,7 +87,7 @@ export default function QuickLaunch({ servicesAndBookmarks, searchString, setSea
   const { t } = useTranslation();
 
   const { settings } = useContext(SettingsContext);
-  const { searchDescriptions = false, hideVisitURL = false } = settings?.quicklaunch ?? {};
+  const { searchDescriptions = false, searchUrls = false, hideVisitURL = false } = settings?.quicklaunch ?? {};
 
   const searchField = useRef();
 
@@ -233,6 +237,7 @@ export default function QuickLaunch({ servicesAndBookmarks, searchString, setSea
     searchProvider,
     searchString,
     searchSuggestions,
+    searchUrls,
     servicesAndBookmarks,
     t,
     url,
@@ -256,7 +261,8 @@ export default function QuickLaunch({ servicesAndBookmarks, searchString, setSea
   }, [isOpen, closeAndReset]);
 
   function highlightText(text) {
-    const parts = text.split(new RegExp(`(${searchString})`, "gi"));
+    const escaped = searchString.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const parts = text.split(new RegExp(`(${escaped})`, "gi"));
     return (
       <span>
         {parts.map((part, i) =>
@@ -342,7 +348,17 @@ export default function QuickLaunch({ servicesAndBookmarks, searchString, setSea
                             )}
                             {r.description && (
                               <span className="text-xs text-theme-600 text-light">
-                                {searchDescriptions && r.priority < 2 ? highlightText(r.description) : r.description}
+                                {searchDescriptions && r.priority === 1 ? highlightText(r.description) : r.description}
+                              </span>
+                            )}
+                            {r.priority === 0 && r.href && (
+                              <span
+                                className={classNames(
+                                  "text-xs text-theme-600 text-light break-all",
+                                  r.description && "md:ml-4",
+                                )}
+                              >
+                                {highlightText(r.href)}
                               </span>
                             )}
                           </div>

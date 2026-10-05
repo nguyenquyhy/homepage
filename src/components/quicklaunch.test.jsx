@@ -344,6 +344,58 @@ describe("components/quicklaunch", () => {
     expect(highlight.closest("span")?.className).toContain("bg-theme-300/10");
   });
 
+  it("includes url matches below name matches when searchUrls is enabled", async () => {
+    renderWithProviders(
+      <Wrapper
+        servicesAndBookmarks={[
+          { name: "Router", href: "https://192.168.1.1" },
+          { name: "Media", href: "https://jellyfin.lan" },
+          { name: "Jellyfin", href: "https://media.lan" },
+        ]}
+      />,
+      {
+        settings: {
+          quicklaunch: {
+            searchUrls: true,
+            hideVisitURL: true,
+          },
+        },
+      },
+    );
+
+    const input = screen.getByPlaceholderText("Search");
+    await waitFor(() => expect(input).toHaveFocus());
+
+    fireEvent.change(input, { target: { value: "jellyfin" } });
+
+    await waitFor(() => expect(document.querySelector('button[data-index="1"]')).toBeTruthy());
+    expect(document.querySelector('button[data-index="0"]')).toHaveTextContent("Jellyfin");
+    expect(document.querySelector('button[data-index="1"]')).toHaveTextContent("Media");
+    expect(document.querySelector('button[data-index="2"]')).toBeNull();
+
+    // url-only match shows the url with the matching part highlighted; the name match does not show its url
+    const highlight = screen.getByText("jellyfin");
+    expect(highlight.className).toContain("bg-theme-300/10");
+    expect(highlight.closest("button")).toHaveAttribute("data-index", "1");
+    expect(screen.queryByText(/media\.lan/)).toBeNull();
+  });
+
+  it("does not match urls when searchUrls is disabled", async () => {
+    renderWithProviders(<Wrapper servicesAndBookmarks={[{ name: "Media", href: "https://jellyfin.lan" }]} />, {
+      settings: { quicklaunch: { hideVisitURL: true } },
+    });
+
+    const input = screen.getByPlaceholderText("Search");
+    await waitFor(() => expect(input).toHaveFocus());
+
+    fireEvent.change(input, { target: { value: "jellyfin" } });
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(document.querySelector('button[data-index="0"]')).toBeNull();
+  });
+
   it("fetches search suggestions and ArrowRight autocompletes the selected suggestion", async () => {
     const originalFetch = globalThis.fetch;
     const fetchSpy = vi.fn(async () => ({
