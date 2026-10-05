@@ -344,6 +344,34 @@ describe("components/quicklaunch", () => {
     expect(highlight.closest("span")?.className).toContain("bg-theme-300/10");
   });
 
+  it("includes services whose URL matches the search string", async () => {
+    renderWithProviders(
+      <Wrapper servicesAndBookmarks={[{ name: "Unrelated", href: "https://internal.example.com/abc-dashboard" }]} />,
+      { settings: { quicklaunch: { provider: "duckduckgo", showSearchSuggestions: false } } },
+    );
+
+    const input = screen.getByPlaceholderText("Search");
+    await waitFor(() => expect(input).toHaveFocus());
+
+    fireEvent.change(input, { target: { value: "abc" } });
+
+    expect(await screen.findByText("Unrelated")).toBeInTheDocument();
+  });
+
+  it("does not include services whose URL does not match the search string", async () => {
+    renderWithProviders(
+      <Wrapper servicesAndBookmarks={[{ name: "Unrelated", href: "https://internal.example.com/xyz-dashboard" }]} />,
+      { settings: { quicklaunch: { provider: "duckduckgo", showSearchSuggestions: false } } },
+    );
+
+    const input = screen.getByPlaceholderText("Search");
+    await waitFor(() => expect(input).toHaveFocus());
+
+    fireEvent.change(input, { target: { value: "abc" } });
+
+    expect(screen.queryByText("Unrelated")).not.toBeInTheDocument();
+  });
+
   it("fetches search suggestions and ArrowRight autocompletes the selected suggestion", async () => {
     const originalFetch = globalThis.fetch;
     const fetchSpy = vi.fn(async () => ({
