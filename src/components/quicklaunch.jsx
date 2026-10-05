@@ -32,6 +32,7 @@ function getSearchResults({
   searchProvider,
   searchString,
   searchSuggestions,
+  searchUrls,
   servicesAndBookmarks,
   t,
   url,
@@ -40,15 +41,15 @@ function getSearchResults({
 
   const results = servicesAndBookmarks.flatMap((result) => {
     const nameMatch = result.name.toLowerCase().includes(searchString);
+    const urlMatch = searchUrls && result.href?.toLowerCase().includes(searchString);
     const descriptionMatch = searchDescriptions && result.description?.toLowerCase().includes(searchString);
 
-    if (!nameMatch && !descriptionMatch) return [];
-    return [{ ...result, ...(searchDescriptions && { priority: nameMatch ? 2 : +descriptionMatch }) }];
+    if (!nameMatch && !urlMatch && !descriptionMatch) return [];
+    // name matches first, then URL matches, then description-only matches
+    return [{ ...result, priority: nameMatch ? 3 : urlMatch ? 2 : 1 }];
   });
 
-  if (searchDescriptions) {
-    results.sort((a, b) => b.priority - a.priority);
-  }
+  results.sort((a, b) => b.priority - a.priority);
 
   if (searchProvider) {
     results.push({
@@ -83,7 +84,7 @@ export default function QuickLaunch({ servicesAndBookmarks, searchString, setSea
   const { t } = useTranslation();
 
   const { settings } = useContext(SettingsContext);
-  const { searchDescriptions = false, hideVisitURL = false } = settings?.quicklaunch ?? {};
+  const { searchDescriptions = false, searchUrls = true, hideVisitURL = false } = settings?.quicklaunch ?? {};
 
   const searchField = useRef();
 
@@ -233,6 +234,7 @@ export default function QuickLaunch({ servicesAndBookmarks, searchString, setSea
     searchProvider,
     searchString,
     searchSuggestions,
+    searchUrls,
     servicesAndBookmarks,
     t,
     url,
@@ -342,8 +344,11 @@ export default function QuickLaunch({ servicesAndBookmarks, searchString, setSea
                             )}
                             {r.description && (
                               <span className="text-xs text-theme-600 text-light">
-                                {searchDescriptions && r.priority < 2 ? highlightText(r.description) : r.description}
+                                {r.priority === 1 ? highlightText(r.description) : r.description}
                               </span>
+                            )}
+                            {r.priority === 2 && (
+                              <span className="text-xs text-theme-600 text-light">{highlightText(r.href)}</span>
                             )}
                           </div>
                         </div>
